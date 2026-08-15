@@ -178,12 +178,6 @@
   }
   .admin-btn:hover{background:rgba(232,184,75,.14);}
   .empty-note{max-width:600px;margin:0 auto 30px;text-align:center;color:var(--muted);font-size:13px;}
-  .bye-card{
-    background:var(--bg-0);border:1.5px dashed var(--line);border-radius:12px;padding:12px 10px;
-    text-align:center;color:var(--muted);font-size:13px;position:relative;z-index:1;
-  }
-  .bye-card .lbl{font-family:'Cairo';font-weight:700;font-size:13px;color:var(--bronze);}
-  .bye-card .val{margin-top:4px;font-weight:700;color:var(--text);}
   .reset-wrap{text-align:center;margin-top:34px;}
 </style>
 </head>
@@ -323,27 +317,28 @@ function resolveRef(obj){
 }
 
 function generateBracket(names){
+  // خلط مرة واحدة فقط في البداية، وبعدها ترتيب الفائزين يظل ثابتًا.
+  // إذا كان العدد فرديًا، آخر لاعب يتأهل للدور التالي مباشرة
+  // بدون إنشاء خانة "مستريح"؛ سيظهر اسمه فقط في الدور الذي سيلعب فيه.
   let tokens = shuffle(names);
   const rounds = [];
   let r = 0;
+
   while(tokens.length > 1){
-    tokens = shuffle(tokens);
-    let byeObj = null;
-    if(tokens.length % 2 === 1){
-      const byeToken = tokens.pop();
-      byeObj = {kind:'bye', token:byeToken};
-    }
     const roundItems = [];
     const nextTokens = [];
+
+    if(tokens.length % 2 === 1){
+      nextTokens.push(tokens.pop());
+    }
+
     for(let i=0;i<tokens.length;i+=2){
       const m = {kind:'match', p1:tokens[i], p2:tokens[i+1], winner:null, played:false};
+      const matchIndex = roundItems.length;
       roundItems.push(m);
-      nextTokens.push({ref:{r, i:roundItems.length-1}});
+      nextTokens.push({ref:{r, i:matchIndex}});
     }
-    if(byeObj){
-      roundItems.push(byeObj);
-      nextTokens.push({ref:{r, i:roundItems.length-1}});
-    }
+
     rounds.push(roundItems);
     tokens = nextTokens;
     r++;
@@ -483,6 +478,36 @@ function deleteSaved(id){
     savedList = savedList.filter(s=>s.id!==id);
     persistSavedListCache();
     render();
+  }
+}
+
+function deleteCurrentTournament(){
+  if(!isAdmin || !state.savedId) return;
+
+  const id = state.savedId;
+  const entry = savedList.find(s=>s.id===id);
+  const name = entry ? entry.name : 'البطولة الحالية';
+
+  if(!confirm(`⚠️ هل أنت متأكد من حذف "${name}"؟\n\nسيتم حذفها من البطولات الظاهرة لكل من يدخل اللعبة.\nهذا لا يعني إنهاء البطولة؛ الحذف فقط هو الذي يخفيها عن الجميع.`)) return;
+
+  if(db){
+    db.ref('savedGames/'+id).remove().then(()=>{
+      savedList = savedList.filter(s=>s.id!==id);
+      persistSavedListCache();
+      state = defaultState();
+      state.screen = 'adminHome';
+      render();
+      alert('✅ تم حذف البطولة للجميع.');
+    }).catch(()=>{
+      alert('❌ حصلت مشكلة في حذف البطولة من السحابة. حاول مرة أخرى.');
+    });
+  }else{
+    savedList = savedList.filter(s=>s.id!==id);
+    persistSavedListCache();
+    state = defaultState();
+    state.screen = 'adminHome';
+    render();
+    alert('⚠️ تم حذفها من هذا الجهاز فقط لأن الاتصال بقاعدة البيانات غير متاح.');
   }
 }
 
@@ -737,9 +762,6 @@ function nextInfoHtml(rounds,total,r,i){
   const info = nextRoundInfo(rounds,r,i);
   if(!info) return '';
   const label = roundLabel(info.roundIndex,total).replace(' 🏆','');
-  if(info.isBye){
-    return `<div class="next-info">→ الفايز هياخد راحة في ${label}</div>`;
-  }
   if(info.opponentVal){
     return `<div class="next-info">→ الفايز هيلعب مع <b>${info.opponentVal}</b> في ${label}</div>`;
   }
@@ -767,16 +789,6 @@ function renderBracket(app){
     let itemsHtml = '';
     round.forEach((item,i)=>{
       const cardId = `item-${r}-${i}`;
-      if(item.kind==='bye'){
-        const val = resolveToken(item.token);
-        itemsHtml += `
-          <div class="bye-card" id="${cardId}">
-            <div class="lbl">مستريح هذا الدور</div>
-            <div class="val">${val || '— في الانتظار —'}</div>
-            ${nextInfoHtml(rounds,total,r,i)}
-          </div>`;
-        return;
-      }
       const v1 = resolveToken(item.p1);
       const v2 = resolveToken(item.p2);
       const bothFilled = !!v1 && !!v2;
@@ -809,7 +821,10 @@ function renderBracket(app){
 
   const headActions = readOnly
     ? ''
-    : `<button class="save-btn" onclick="saveCurrent()">💾 حفظ اللعبة</button>`;
+    : `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+         <button class="save-btn" onclick="saveCurrent()">💾 حفظ اللعبة</button>
+         ${state.savedId ? `<button class="top-btn" style="border-color:var(--bronze);color:var(--bronze)" onclick="deleteCurrentTournament()">🗑️ حذف البطولة للجميع</button>` : ''}
+       </div>`;
   const bottomBtn = readOnly
     ? `<button class="ghost-btn" style="max-width:260px" onclick="goHome()">⬅ كل البطولات</button>`
     : `<button class="ghost-btn" style="max-width:260px" onclick="goHome()">↺ بطولة جديدة</button>`;
