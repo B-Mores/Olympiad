@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>الأولمبياد</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0A0F1C; --bg-1:#0F1729; --panel:#151F38; --panel-2:#1B2745; --line:#2A3A63;
+    --gold:#E8B84B; --gold-dim:#8A6E2E; --bronze:#C97B4A; --win:#43D17A;
+    --text:#F4F1EA; --muted:#8C97B8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;min-height:100vh;
+    background:
+      radial-gradient(circle at 15% -10%, rgba(232,184,75,.10), transparent 45%),
+      radial-gradient(circle at 100% 10%, rgba(201,123,74,.10), transparent 40%),
+      linear-gradient(180deg,var(--bg-0),var(--bg-1) 60%);
+    color:var(--text);font-family:'Tajawal',sans-serif;padding:28px 16px 60px;
+  }
+  h1,h2,h3,.disp{font-family:'Cairo',sans-serif;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;gap:10px;}
+  .brand{
+    font-family:'Cairo',sans-serif;font-weight:900;font-size:26px;letter-spacing:.5px;
+    background:linear-gradient(90deg,var(--gold),#FFE9B3 40%,var(--gold));
+    -webkit-background-clip:text;background-clip:text;color:transparent;cursor:pointer;user-select:none;
+  }
+  .top-actions{display:flex;gap:8px;}
+  .top-btn{
+    border:1px solid var(--line);background:var(--panel);color:var(--muted);
+    padding:8px 16px;border-radius:10px;font-family:'Tajawal';font-size:13px;cursor:pointer;transition:.15s;
+    white-space:nowrap;
+  }
+  .top-btn:hover{border-color:var(--gold-dim);color:var(--gold);}
+  .top-btn:disabled{opacity:.3;cursor:not-allowed;}
+
+  .hero{text-align:center;margin:10px 0 34px;}
+  .hero .eyebrow{color:var(--bronze);font-size:13px;letter-spacing:3px;font-weight:700;font-family:'Cairo';}
+  .hero h1{font-size:48px;font-weight:900;margin:8px 0 6px;
+    background:linear-gradient(90deg,#FFE9B3,var(--gold) 50%,var(--bronze));
+    -webkit-background-clip:text;background-clip:text;color:transparent;}
+  .hero p{color:var(--muted);font-size:15px;margin:0;}
+
+  .saved-section{max-width:760px;margin:0 auto 38px;}
+  .saved-title{font-family:'Cairo';font-weight:800;font-size:15px;color:var(--gold);margin-bottom:10px;}
+  .saved-item{
+    display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:12px 16px;margin-bottom:8px;
+  }
+  .saved-item .info{flex:1;}
+  .saved-item .nm{font-family:'Cairo';font-weight:700;font-size:14.5px;}
+  .saved-item .meta{color:var(--muted);font-size:12px;margin-top:2px;}
+  .saved-item button{
+    border:none;border-radius:9px;padding:8px 14px;font-family:'Cairo';font-weight:700;font-size:12.5px;cursor:pointer;
+  }
+  .btn-continue{background:var(--gold);color:#241A05;}
+  .btn-del{background:transparent;border:1px solid var(--line) !important;color:var(--muted);margin-right:4px;}
+  .btn-del:hover{border-color:var(--bronze) !important;color:var(--bronze);}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-top:8px;}
+  .game-card{
+    background:linear-gradient(160deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);border-radius:16px;padding:26px 16px;text-align:center;cursor:pointer;
+    transition:.18s ease;position:relative;overflow:hidden;
+  }
+  .game-card:hover{border-color:var(--gold);transform:translateY(-3px);box-shadow:0 10px 24px rgba(0,0,0,.35);}
+  .game-card .ic{font-size:38px;display:block;margin-bottom:12px;filter:drop-shadow(0 0 10px rgba(232,184,75,.25));}
+  .game-card .name{font-family:'Cairo';font-weight:700;font-size:17px;}
+
+  .panel{
+    background:linear-gradient(160deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);border-radius:18px;padding:28px;max-width:560px;margin:0 auto;
+  }
+  .panel h2{margin:0 0 4px;font-size:22px;font-weight:800;}
+  .panel .sub{color:var(--muted);font-size:13px;margin:0 0 22px;}
+  .choice-row{display:flex;gap:14px;flex-wrap:wrap;}
+  .choice-btn{
+    flex:1;min-width:140px;background:var(--bg-1);border:1.5px solid var(--line);
+    border-radius:14px;padding:20px 14px;text-align:center;cursor:pointer;transition:.15s;
+    font-family:'Cairo';font-weight:700;font-size:15px;color:var(--text);
+  }
+  .choice-btn .ic{font-size:26px;display:block;margin-bottom:8px;}
+  .choice-btn:hover{border-color:var(--gold);background:#182242;}
+
+  .field-row{display:flex;gap:8px;margin-bottom:10px;align-items:center;}
+  .field-row input{
+    flex:1;background:var(--bg-1);border:1.5px solid var(--line);color:var(--text);
+    padding:11px 14px;border-radius:10px;font-family:'Tajawal';font-size:14px;
+  }
+  .field-row input:focus{outline:none;border-color:var(--gold);}
+  .field-row .num{width:26px;text-align:center;color:var(--gold-dim);font-family:'Cairo';font-weight:700;font-size:13px;}
+  .icon-btn{
+    width:34px;height:34px;flex:0 0 34px;border-radius:9px;border:1px solid var(--line);
+    background:var(--bg-1);color:var(--muted);cursor:pointer;font-size:16px;line-height:1;
+    display:flex;align-items:center;justify-content:center;transition:.15s;
+  }
+  .icon-btn:hover{border-color:var(--bronze);color:var(--bronze);}
+  .icon-btn:disabled{opacity:.3;cursor:not-allowed;}
+
+  .add-btn{
+    width:100%;padding:11px;border-radius:10px;border:1.5px dashed var(--line);
+    background:transparent;color:var(--muted);font-family:'Tajawal';cursor:pointer;margin-top:6px;transition:.15s;
+  }
+  .add-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+  .num-select{display:flex;align-items:center;gap:10px;margin:16px 0;}
+  .num-select label{color:var(--muted);font-size:14px;flex:1;}
+  .num-select .stepper{display:flex;align-items:center;gap:10px;}
+  .num-select .val{font-family:'Cairo';font-weight:800;font-size:18px;color:var(--gold);width:26px;text-align:center;}
+
+  .primary-btn{
+    width:100%;margin-top:18px;padding:15px;border-radius:12px;border:none;
+    background:linear-gradient(90deg,var(--gold),#F3D488);color:#241A05;font-family:'Cairo';font-weight:800;
+    font-size:16px;cursor:pointer;transition:.15s;box-shadow:0 6px 18px rgba(232,184,75,.18);
+  }
+  .primary-btn:hover{filter:brightness(1.06);transform:translateY(-1px);}
+  .primary-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+  .ghost-btn{
+    width:100%;margin-top:10px;padding:12px;border-radius:12px;border:1px solid var(--line);
+    background:transparent;color:var(--muted);font-family:'Tajawal';cursor:pointer;transition:.15s;
+  }
+  .ghost-btn:hover{border-color:var(--gold-dim);color:var(--gold);}
+  .warn{color:var(--bronze);font-size:12.5px;margin-top:8px;min-height:16px;}
+
+  .team-block{background:var(--bg-1);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+  .team-block input{
+    width:100%;background:transparent;border:none;border-bottom:1.5px solid var(--line);
+    color:var(--gold);font-family:'Cairo';font-weight:700;font-size:15px;padding:4px 2px 8px;margin-bottom:8px;
+  }
+  .team-block input:focus{outline:none;border-color:var(--gold);}
+  .team-block .plist{color:var(--muted);font-size:13px;line-height:1.9;}
+  .team-block .plist span{background:var(--panel-2);border-radius:6px;padding:2px 8px;margin-left:6px;display:inline-block;margin-bottom:4px;}
+
+  .bracket-head{display:flex;align-items:center;justify-content:space-between;max-width:1000px;margin:0 auto 18px;flex-wrap:wrap;gap:10px;}
+  .bracket-head .title{font-family:'Cairo';font-weight:800;font-size:18px;}
+  .save-btn{
+    border:1px solid var(--gold-dim);background:rgba(232,184,75,.08);color:var(--gold);
+    padding:9px 18px;border-radius:10px;font-family:'Cairo';font-weight:700;font-size:13px;cursor:pointer;transition:.15s;
+  }
+  .save-btn:hover{background:rgba(232,184,75,.16);}
+  .champion{
+    text-align:center;background:linear-gradient(90deg,rgba(232,184,75,.12),rgba(201,123,74,.12));
+    border:1px solid var(--gold-dim);border-radius:16px;padding:22px;margin-bottom:30px;
+  }
+  .champion .cap{color:var(--bronze);font-size:12px;letter-spacing:2px;font-family:'Cairo';font-weight:700;}
+  .champion .cname{font-family:'Cairo';font-weight:900;font-size:30px;color:var(--gold);margin-top:6px;}
+  .bracket-scroll{overflow-x:auto;padding-bottom:14px;}
+  .bracket{display:flex;flex-direction:row-reverse;gap:46px;direction:ltr;min-width:max-content;padding:6px;position:relative;}
+  .round-col{display:flex;flex-direction:column;justify-content:space-around;gap:18px;min-width:210px;position:relative;z-index:1;}
+  .round-title{font-family:'Cairo';font-weight:800;font-size:13px;color:var(--bronze);text-align:center;letter-spacing:1px;margin-bottom:6px;}
+  .match{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;position:relative;z-index:1;}
+  .match.playable{border-color:var(--gold-dim);}
+  .slot{
+    display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;
+    margin-bottom:6px;font-family:'Tajawal';font-size:13.5px;background:var(--bg-1);color:var(--text);
+  }
+  .slot:last-child{margin-bottom:0;}
+  .slot.empty{color:var(--muted);font-style:italic;}
+  .slot.winner{background:rgba(67,209,122,.14);border:1px solid var(--win);color:var(--win);font-weight:700;}
+  .slot.loser{opacity:.45;text-decoration:line-through;}
+  .slot.clickable{cursor:pointer;transition:.12s;}
+  .slot.clickable:hover{background:var(--panel-2);border:1px solid var(--gold);}
+  .play-hint{font-size:11px;color:var(--gold-dim);text-align:center;margin-top:4px;font-family:'Cairo';}
+  .bye-card{
+    background:var(--bg-0);border:1.5px dashed var(--line);border-radius:12px;padding:12px 10px;
+    text-align:center;color:var(--muted);font-size:13px;position:relative;z-index:1;
+  }
+  .bye-card .lbl{font-family:'Cairo';font-weight:700;font-size:13px;color:var(--bronze);}
+  .bye-card .val{margin-top:4px;font-weight:700;color:var(--text);}
+  .reset-wrap{text-align:center;margin-top:34px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand" onclick="goHome()">🏆 الأولمبياد</div>
+    <div class="top-actions">
+      <button class="top-btn" id="backBtn" onclick="goBack()" style="display:none">⬅ رجوع خطوة</button>
+      <button class="top-btn" id="homeBtn" onclick="goHome()" style="display:none">↩ الرئيسية</button>
+    </div>
+  </div>
+  <div id="app"></div>
+</div>
+
+<script>
+/* ---------------- persistence helpers ---------------- */
+function safeGet(key){ try{ const v = localStorage.getItem(key); return v?JSON.parse(v):null; }catch(e){ return null; } }
+function safeSet(key,val){ try{ localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ return false; } }
+
+let savedList = safeGet('olympiad_saved') || [];
+let historyStack = [];
+
+function defaultState(){
+  return {
+    screen:'home', game:null, category:null,
+    players:['',''], teams:['',''],
+    drawPlayers:['','','',''], numTeams:2, drawResult:null,
+    entrants:[], bracket:null, savedId:null
+  };
+}
+let state = safeGet('olympiad_autosave') || defaultState();
+
+function persistCurrent(){ safeSet('olympiad_autosave', state); }
+function persistSavedList(){ safeSet('olympiad_saved', savedList); }
+
+function snapshot(){
+  historyStack.push(JSON.parse(JSON.stringify(state)));
+  if(historyStack.length>60) historyStack.shift();
+}
+function goBack(){
+  if(historyStack.length===0) return;
+  state = historyStack.pop();
+  render();
+}
+
+function goHome(){
+  snapshot();
+  state = defaultState();
+  render();
+}
+
+/* ---------------- bracket generation (proper bye distribution) ---------------- */
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+// token: string (known name) OR {ref:{r,i}} pointing at coordinates inside state.bracket.
+// Using coordinates (not live object references) means this keeps working correctly
+// even after the state is cloned via JSON (autosave reload, undo history, saved games).
+function resolveToken(t){
+  if(t===null || t===undefined) return null;
+  if(typeof t==='string') return t;
+  const obj = state.bracket[t.ref.r][t.ref.i];
+  return resolveRef(obj);
+}
+function resolveRef(obj){
+  if(obj.kind==='match') return obj.winner;
+  if(obj.kind==='bye') return resolveToken(obj.token);
+  return null;
+}
+
+function generateBracket(names){
+  let tokens = shuffle(names);
+  const rounds = [];
+  let r = 0;
+  while(tokens.length > 1){
+    tokens = shuffle(tokens);
+    let byeObj = null;
+    if(tokens.length % 2 === 1){
+      const byeToken = tokens.pop();
+      byeObj = {kind:'bye', token:byeToken};
+    }
+    const roundItems = [];
+    const nextTokens = [];
+    for(let i=0;i<tokens.length;i+=2){
+      const m = {kind:'match', p1:tokens[i], p2:tokens[i+1], winner:null, played:false};
+      roundItems.push(m);
+      nextTokens.push({ref:{r, i:roundItems.length-1}});
+    }
+    if(byeObj){
+      roundItems.push(byeObj);
+      nextTokens.push({ref:{r, i:roundItems.length-1}});
+    }
+    rounds.push(roundItems);
+    tokens = nextTokens;
+    r++;
+  }
+  return rounds;
+}
+
+function setWinner(r,i,name){
+  snapshot();
+  const item = state.bracket[r][i];
+  item.winner = name; item.played = true;
+  render();
+}
+
+function startBracket(entrants){
+  state.entrants = entrants;
+  state.bracket = generateBracket(entrants);
+  state.savedId = null;
+  state.screen='bracket';
+  render();
+}
+
+/* ---------------- navigation ---------------- */
+function pickGame(game){
+  snapshot();
+  state.game=game;
+  if(game==='اخرى'){ state.screen='subtype'; }
+  else if(game==='كورة'){ state.category='team'; state.screen='teamMode'; }
+  else { state.category='individual'; state.players=['','']; state.screen='individualSetup'; }
+  render();
+}
+function pickCategory(cat){
+  snapshot();
+  state.category=cat;
+  if(cat==='individual'){ state.players=['','']; state.screen='individualSetup'; }
+  else { state.teams=['','']; state.screen='teamMode'; }
+  render();
+}
+function pickTeamMode(ready){
+  snapshot();
+  if(ready){ state.teams=['','']; state.screen='teamNamesSetup'; }
+  else { state.drawPlayers=['','','','']; state.numTeams=2; state.screen='teamDrawPlayers'; }
+  render();
+}
+
+/* ---------------- list editing ---------------- */
+function addItem(key){ snapshot(); state[key].push(''); render(); }
+function removeItem(key,i){ if(state[key].length>2){ snapshot(); state[key].splice(i,1); render(); } }
+function updateItem(key,i,val){ state[key][i]=val; persistCurrent(); }
+
+function changeNumTeams(delta){
+  const v = state.numTeams+delta;
+  if(v>=2 && v<=8){ snapshot(); state.numTeams=v; render(); }
+}
+
+function doQuickDraw(){
+  const names = state.drawPlayers.map(p=>p.trim()).filter(Boolean);
+  if(names.length < state.numTeams){
+    document.getElementById('drawWarn').textContent = 'لازم عدد اللاعبين يكون أكبر من أو يساوي عدد الفرق';
+    return;
+  }
+  snapshot();
+  const shuffled = shuffle(names);
+  const teams = Array.from({length:state.numTeams},()=>[]);
+  shuffled.forEach((p,i)=>teams[i%state.numTeams].push(p));
+  state.drawResult = teams.map((players,idx)=>({name:'فريق '+(idx+1), players}));
+  state.screen='teamDrawResult';
+  render();
+}
+function updateDrawTeamName(i,val){ state.drawResult[i].name = val; persistCurrent(); }
+
+function confirmDrawAndStart(){
+  const entrants = state.drawResult.map((t,i)=> t.name.trim() || ('فريق '+(i+1)));
+  snapshot();
+  startBracket(entrants);
+}
+function startFromList(key){
+  const names = state[key].map(p=>p.trim()).filter(Boolean);
+  if(names.length<2) return;
+  snapshot();
+  startBracket(names);
+}
+
+/* ---------------- save / load multiple tournaments ---------------- */
+function saveCurrent(){
+  const existing = savedList.find(s=>s.id===state.savedId);
+  const defaultName = existing ? existing.name : (state.game+' - '+new Date().toLocaleDateString('ar-EG'));
+  const name = prompt('اسم البطولة؟', defaultName);
+  if(name===null) return;
+  if(!state.savedId) state.savedId = 'g'+Date.now();
+  const entry = {id:state.savedId, name: name.trim()||defaultName, game:state.game, savedAt:Date.now(), data:JSON.parse(JSON.stringify(state))};
+  const idx = savedList.findIndex(s=>s.id===state.savedId);
+  if(idx>=0) savedList[idx]=entry; else savedList.push(entry);
+  persistSavedList();
+  render();
+  alert('✅ اتحفظت اللعبة، هتلاقيها في الصفحة الرئيسية');
+}
+function loadSaved(id){
+  const entry = savedList.find(s=>s.id===id);
+  if(!entry) return;
+  snapshot();
+  state = JSON.parse(JSON.stringify(entry.data));
+  render();
+}
+function deleteSaved(id){
+  if(!confirm('تحذف البطولة دي من المحفوظات؟')) return;
+  savedList = savedList.filter(s=>s.id!==id);
+  persistSavedList();
+  render();
+}
+
+/* ---------------- render ---------------- */
+function render(){
+  persistCurrent();
+  document.getElementById('homeBtn').style.display = state.screen==='home' ? 'none':'inline-block';
+  document.getElementById('backBtn').style.display = historyStack.length>0 ? 'inline-block':'none';
+  const app=document.getElementById('app');
+  app.innerHTML='';
+  if(state.screen==='home') return renderHome(app);
+  if(state.screen==='subtype') return renderSubtype(app);
+  if(state.screen==='individualSetup') return renderList(app,{
+    key:'players', title:'مين هيلعب؟', sub:'دخّل أسماء اللاعبين', placeholder:'اسم اللاعب',
+    onStart:()=>startFromList('players')
+  });
+  if(state.screen==='teamMode') return renderTeamMode(app);
+  if(state.screen==='teamNamesSetup') return renderList(app,{
+    key:'teams', title:'أسماء الفرق', sub:'دخّل أسماء الفرق المشاركة', placeholder:'اسم الفريق',
+    onStart:()=>startFromList('teams')
+  });
+  if(state.screen==='teamDrawPlayers') return renderTeamDrawPlayers(app);
+  if(state.screen==='teamDrawResult') return renderTeamDrawResult(app);
+  if(state.screen==='bracket') return renderBracket(app);
+}
+
+function renderHome(app){
+  const games=[
+    {id:'شطرنج',ic:'♟️'}, {id:'كونكت فور',ic:'🔴'}, {id:'كورة',ic:'⚽'},
+    {id:'بلايستيشن',ic:'🎮'}, {id:'اخرى',ic:'🎲'}
+  ];
+  let savedHtml='';
+  if(savedList.length){
+    const sorted=[...savedList].sort((a,b)=>b.savedAt-a.savedAt);
+    savedHtml = `
+      <div class="saved-section">
+        <div class="saved-title">🗂️ بطولات محفوظة</div>
+        ${sorted.map(s=>`
+          <div class="saved-item">
+            <div class="info">
+              <div class="nm">${s.name}</div>
+              <div class="meta">${s.game||''}</div>
+            </div>
+            <button class="btn-del" onclick="deleteSaved('${s.id}')">حذف</button>
+            <button class="btn-continue" onclick="loadSaved('${s.id}')">متابعة ▶</button>
+          </div>`).join('')}
+      </div>`;
+  }
+  app.innerHTML = `
+    <div class="hero">
+      <div class="eyebrow">اختر اللعبة وابدأ البطولة</div>
+      <h1>الأولمبياد</h1>
+      <p>اختار اللعبة، ضيف اللاعبين، ودوس ابدأ الاولمبياد</p>
+    </div>
+    ${savedHtml}
+    <div class="grid">
+      ${games.map(g=>`
+        <div class="game-card" onclick="pickGame('${g.id}')">
+          <span class="ic">${g.ic}</span>
+          <div class="name">${g.id}</div>
+        </div>`).join('')}
+    </div>
+  `;
+}
+
+function renderSubtype(app){
+  app.innerHTML = `
+    <div class="panel">
+      <h2>لعبة أخرى</h2>
+      <p class="sub">اللعبة دي فردية ولا جماعية؟</p>
+      <div class="choice-row">
+        <div class="choice-btn" onclick="pickCategory('individual')"><span class="ic">🧍</span>فردي</div>
+        <div class="choice-btn" onclick="pickCategory('team')"><span class="ic">👥</span>جماعي</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTeamMode(app){
+  app.innerHTML = `
+    <div class="panel">
+      <h2>${state.game}</h2>
+      <p class="sub">الفرق جاهزة ولا محتاجين نعمل قرعة؟</p>
+      <div class="choice-row">
+        <div class="choice-btn" onclick="pickTeamMode(true)"><span class="ic">✅</span>الفرق جاهزة</div>
+        <div class="choice-btn" onclick="pickTeamMode(false)"><span class="ic">🎲</span>مش جاهزة (قرعة)</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderList(app,{key,title,sub,placeholder,onStart}){
+  const arr = state[key];
+  app.innerHTML = `
+    <div class="panel">
+      <h2>${title}</h2>
+      <p class="sub">${sub}</p>
+      <div id="listFields"></div>
+      <button class="add-btn" id="addBtn">+ إضافة</button>
+      <button class="primary-btn" id="startBtn">🚀 ابدأ الاولمبياد</button>
+    </div>
+  `;
+  const fieldsDiv = app.querySelector('#listFields');
+  arr.forEach((val,i)=>{
+    const row=document.createElement('div');
+    row.className='field-row';
+    row.innerHTML = `
+      <span class="num">${i+1}</span>
+      <input type="text" value="${val.replace(/"/g,'&quot;')}" placeholder="${placeholder} ${i+1}">
+      <button class="icon-btn" ${arr.length<=2?'disabled':''}>✕</button>
+    `;
+    row.querySelector('input').addEventListener('input', e=> updateItem(key,i,e.target.value));
+    row.querySelector('button').addEventListener('click', ()=> removeItem(key,i));
+    fieldsDiv.appendChild(row);
+  });
+  app.querySelector('#addBtn').addEventListener('click', ()=> addItem(key));
+  app.querySelector('#startBtn').addEventListener('click', onStart);
+}
+
+function renderTeamDrawPlayers(app){
+  app.innerHTML = `
+    <div class="panel">
+      <h2>قرعة سريعة</h2>
+      <p class="sub">دخّل أسماء اللاعبين، وحدد عدد الفرق، وهنوزعهم عشوائي</p>
+      <div class="num-select">
+        <label>عدد الفرق</label>
+        <div class="stepper">
+          <button class="icon-btn" id="decTeams">−</button>
+          <span class="val" id="numTeamsVal">${state.numTeams}</span>
+          <button class="icon-btn" id="incTeams">+</button>
+        </div>
+      </div>
+      <div id="listFields"></div>
+      <button class="add-btn" id="addBtn">+ إضافة لاعب</button>
+      <button class="primary-btn" id="drawBtn">🎲 اعمل القرعة</button>
+      <div class="warn" id="drawWarn"></div>
+    </div>
+  `;
+  app.querySelector('#decTeams').addEventListener('click',()=>changeNumTeams(-1));
+  app.querySelector('#incTeams').addEventListener('click',()=>changeNumTeams(1));
+  const fieldsDiv = app.querySelector('#listFields');
+  state.drawPlayers.forEach((val,i)=>{
+    const row=document.createElement('div');
+    row.className='field-row';
+    row.innerHTML = `
+      <span class="num">${i+1}</span>
+      <input type="text" value="${val.replace(/"/g,'&quot;')}" placeholder="اسم اللاعب ${i+1}">
+      <button class="icon-btn" ${state.drawPlayers.length<=2?'disabled':''}>✕</button>
+    `;
+    row.querySelector('input').addEventListener('input', e=> updateItem('drawPlayers',i,e.target.value));
+    row.querySelector('button').addEventListener('click', ()=> removeItem('drawPlayers',i));
+    fieldsDiv.appendChild(row);
+  });
+  app.querySelector('#addBtn').addEventListener('click', ()=> addItem('drawPlayers'));
+  app.querySelector('#drawBtn').addEventListener('click', doQuickDraw);
+}
+
+function renderTeamDrawResult(app){
+  app.innerHTML = `
+    <div class="panel">
+      <h2>نتيجة القرعة</h2>
+      <p class="sub">اختار اسم لكل فريق ثم ابدأ الاولمبياد</p>
+      <div id="teamsDiv"></div>
+      <button class="primary-btn" id="startBtn">🚀 ابدأ الاولمبياد</button>
+      <button class="ghost-btn" id="redrawBtn">↺ إعادة القرعة</button>
+    </div>
+  `;
+  const div=app.querySelector('#teamsDiv');
+  state.drawResult.forEach((t,i)=>{
+    const block=document.createElement('div');
+    block.className='team-block';
+    block.innerHTML = `
+      <input type="text" value="${t.name}">
+      <div class="plist">${t.players.map(p=>`<span>${p}</span>`).join('')}</div>
+    `;
+    block.querySelector('input').addEventListener('input', e=> updateDrawTeamName(i,e.target.value));
+    div.appendChild(block);
+  });
+  app.querySelector('#startBtn').addEventListener('click', confirmDrawAndStart);
+  app.querySelector('#redrawBtn').addEventListener('click', doQuickDraw);
+}
+
+/* ---------------- connector lines between rounds ---------------- */
+let lastBracketRounds = null;
+
+function drawConnectors(rounds){
+  const container = document.getElementById('bracketInner');
+  if(!container) return;
+  const old = document.getElementById('connectorSvg');
+  if(old) old.remove();
+  const w = container.scrollWidth, h = container.scrollHeight;
+  if(!w || !h) return;
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns,'svg');
+  svg.setAttribute('id','connectorSvg');
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.position='absolute';
+  svg.style.top='0';
+  svg.style.left='0';
+  svg.style.pointerEvents='none';
+  svg.style.zIndex='0';
+  container.insertBefore(svg, container.firstChild);
+
+  rounds.forEach((round,r)=>{
+    if(r===0) return; // round 1 opponents come from the draw, no incoming line
+    round.forEach((item,j)=>{
+      const targetEl = document.getElementById(`item-${r}-${j}`);
+      if(!targetEl) return;
+      const sourceCoords = [];
+      if(item.kind==='match'){
+        [item.p1,item.p2].forEach(tok=>{ if(tok && typeof tok==='object' && tok.ref) sourceCoords.push(tok.ref); });
+      } else if(item.kind==='bye'){
+        const tok = item.token;
+        if(tok && typeof tok==='object' && tok.ref) sourceCoords.push(tok.ref);
+      }
+      sourceCoords.forEach(src=>{
+        const srcEl = document.getElementById(`item-${src.r}-${src.i}`);
+        if(srcEl) drawElbow(svg, srcEl, targetEl);
+      });
+    });
+  });
+}
+
+function drawElbow(svg, srcEl, targetEl){
+  const sx = srcEl.offsetLeft, sy = srcEl.offsetTop, sw = srcEl.offsetWidth, sh = srcEl.offsetHeight;
+  const tx = targetEl.offsetLeft, ty = targetEl.offsetTop, tw = targetEl.offsetWidth, th = targetEl.offsetHeight;
+  let x1, x2;
+  if(sx < tx){ x1 = sx+sw; x2 = tx; } else { x1 = sx; x2 = tx+tw; }
+  const y1 = sy + sh/2;
+  const y2 = ty + th/2;
+  const midX = (x1+x2)/2;
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d', `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke','#3A4C7A');
+  path.setAttribute('stroke-width','2');
+  svg.appendChild(path);
+}
+
+window.addEventListener('resize', ()=>{
+  if(state.screen==='bracket' && lastBracketRounds) drawConnectors(lastBracketRounds);
+});
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(()=>{
+    if(state.screen==='bracket' && lastBracketRounds) drawConnectors(lastBracketRounds);
+  });
+}
+
+function roundLabel(r,total){
+  const fromEnd = total-1-r;
+  if(fromEnd===0) return 'النهائي 🏆';
+  if(fromEnd===1) return 'نصف النهائي';
+  if(fromEnd===2) return 'ربع النهائي';
+  return 'الدور '+(r+1);
+}
+
+function renderBracket(app){
+  const rounds = state.bracket;
+  const total = rounds.length;
+  const lastRoundFinalMatch = rounds[total-1].find(it=>it.kind==='match');
+  const champion = lastRoundFinalMatch && lastRoundFinalMatch.played ? lastRoundFinalMatch.winner : null;
+
+  let champHtml = '';
+  if(champion){
+    champHtml = `
+      <div class="champion">
+        <div class="cap">🏆 بطل ${state.game}</div>
+        <div class="cname">${champion}</div>
+      </div>`;
+  }
+
+  let cols = '';
+  rounds.forEach((round,r)=>{
+    let itemsHtml = '';
+    round.forEach((item,i)=>{
+      const cardId = `item-${r}-${i}`;
+      if(item.kind==='bye'){
+        const val = resolveToken(item.token);
+        itemsHtml += `
+          <div class="bye-card" id="${cardId}">
+            <div class="lbl">مستريح هذا الدور</div>
+            <div class="val">${val || '— في الانتظار —'}</div>
+          </div>`;
+        return;
+      }
+      const v1 = resolveToken(item.p1);
+      const v2 = resolveToken(item.p2);
+      const bothFilled = !!v1 && !!v2;
+      let slotsHtml = '';
+      [v1,v2].forEach(v=>{
+        if(!v){
+          slotsHtml += `<div class="slot empty">— في الانتظار —</div>`;
+        } else if(item.played){
+          const cls = item.winner===v ? 'winner':'loser';
+          slotsHtml += `<div class="slot ${cls}">${v}</div>`;
+        } else if(bothFilled){
+          slotsHtml += `<div class="slot clickable" onclick="setWinner(${r},${i},'${v.replace(/'/g,"\\'")}')">${v}</div>`;
+        } else {
+          slotsHtml += `<div class="slot">${v}</div>`;
+        }
+      });
+      itemsHtml += `
+        <div class="match ${bothFilled && !item.played ? 'playable':''}" id="${cardId}">
+          ${slotsHtml}
+          ${bothFilled && !item.played ? '<div class="play-hint">دوس على اسم الفايز</div>' : ''}
+        </div>`;
+    });
+    cols += `
+      <div class="round-col">
+        <div class="round-title">${roundLabel(r,total)}</div>
+        ${itemsHtml}
+      </div>`;
+  });
+
+  app.innerHTML = `
+    <div class="bracket-head">
+      <div class="title">🏟️ ${state.game}</div>
+      <button class="save-btn" onclick="saveCurrent()">💾 حفظ اللعبة</button>
+    </div>
+    ${champHtml}
+    <div class="bracket-scroll"><div class="bracket" id="bracketInner">${cols}</div></div>
+    <div class="reset-wrap"><button class="ghost-btn" style="max-width:260px" onclick="goHome()">↺ بطولة جديدة</button></div>
+  `;
+
+  lastBracketRounds = rounds;
+}
+
+render();
+</script>
+</body>
+</html>
