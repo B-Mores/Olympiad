@@ -165,6 +165,19 @@
   .slot.clickable{cursor:pointer;transition:.12s;}
   .slot.clickable:hover{background:var(--panel-2);border:1px solid var(--gold);}
   .play-hint{font-size:11px;color:var(--gold-dim);text-align:center;margin-top:4px;font-family:'Cairo';}
+  .next-info{font-size:11px;color:var(--muted);text-align:center;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);line-height:1.6;}
+  .next-info b{color:var(--gold);}
+  .view-note{
+    max-width:1000px;margin:0 auto 18px;text-align:center;color:var(--muted);font-size:12.5px;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px;
+  }
+  .landing-admin{max-width:400px;margin:36px auto 0;text-align:center;}
+  .admin-btn{
+    border:1px solid var(--gold-dim);background:rgba(232,184,75,.06);color:var(--gold);
+    padding:12px 22px;border-radius:12px;font-family:'Cairo';font-weight:700;font-size:14px;cursor:pointer;transition:.15s;
+  }
+  .admin-btn:hover{background:rgba(232,184,75,.14);}
+  .empty-note{max-width:600px;margin:0 auto 30px;text-align:center;color:var(--muted);font-size:13px;}
   .bye-card{
     background:var(--bg-0);border:1.5px dashed var(--line);border-radius:12px;padding:12px 10px;
     text-align:center;color:var(--muted);font-size:13px;position:relative;z-index:1;
@@ -179,6 +192,7 @@
   <div class="top">
     <div class="brand" onclick="goHome()">🏆 الأولمبياد</div>
     <div class="top-actions">
+      <button class="top-btn" id="logoutBtn" onclick="adminLogout()" style="display:none">🚪 خروج المنظم</button>
       <button class="top-btn" id="backBtn" onclick="goBack()" style="display:none">⬅ رجوع خطوة</button>
       <button class="top-btn" id="homeBtn" onclick="goHome()" style="display:none">↩ الرئيسية</button>
     </div>
@@ -186,26 +200,88 @@
   <div id="app"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
+/* ---------------- shared cloud storage (Firebase) ---------------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyCYMhOwQIRiaU77SV7hl54Hx5PX2XlJZDc",
+  authDomain: "olympiad-ae7e6.firebaseapp.com",
+  databaseURL: "https://olympiad-ae7e6-default-rtdb.firebaseio.com",
+  projectId: "olympiad-ae7e6",
+  storageBucket: "olympiad-ae7e6.firebasestorage.app",
+  messagingSenderId: "105124370010",
+  appId: "1:105124370010:web:c65cbaa852fe6833e1ea63"
+};
+let db = null;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+}catch(e){ db = null; }
+
 /* ---------------- persistence helpers ---------------- */
 function safeGet(key){ try{ const v = localStorage.getItem(key); return v?JSON.parse(v):null; }catch(e){ return null; } }
 function safeSet(key,val){ try{ localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ return false; } }
+function safeSessionGet(key){ try{ const v = sessionStorage.getItem(key); return v?JSON.parse(v):null; }catch(e){ return null; } }
+function safeSessionSet(key,val){ try{ sessionStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ return false; } }
 
-let savedList = safeGet('olympiad_saved') || [];
+const ADMIN_PASSWORD = 'Gravity2026';
+const ADMIN_SCREENS = ['adminHome','subtype','individualSetup','teamMode','teamNamesSetup','teamDrawPlayers','teamDrawResult'];
+let isAdmin = !!safeSessionGet('olympiad_admin');
+
+function adminLogin(){
+  const pw = prompt('كلمة سر المنظم:');
+  if(pw===null) return;
+  if(pw === ADMIN_PASSWORD){
+    isAdmin = true;
+    safeSessionSet('olympiad_admin', true);
+    snapshot();
+    state.screen='adminHome';
+    render();
+  } else {
+    alert('❌ كلمة السر غلط');
+  }
+}
+function adminLogout(){
+  isAdmin = false;
+  safeSessionSet('olympiad_admin', false);
+  goHome();
+}
+
+let savedList = safeGet('olympiad_saved_cache') || [];
 let historyStack = [];
+
+function attachSavedListener(){
+  if(!db) return;
+  db.ref('savedGames').on('value', snap=>{
+    const val = snap.val() || {};
+    savedList = Object.keys(val).map(k=>val[k]).sort((a,b)=>b.savedAt-a.savedAt);
+    safeSet('olympiad_saved_cache', savedList);
+    if(state.screen==='landing' || state.screen==='adminHome'){ render(); }
+    if(state.screen==='bracket' && state.viewOnly && state.savedId){
+      const entry = savedList.find(s=>s.id===state.savedId);
+      if(entry){
+        const fresh = JSON.parse(JSON.stringify(entry.data));
+        fresh.viewOnly = true;
+        state = fresh;
+        render();
+      }
+    }
+  });
+}
 
 function defaultState(){
   return {
-    screen:'home', game:null, category:null,
+    screen:'landing', game:null, category:null,
     players:['',''], teams:['',''],
     drawPlayers:['','','',''], numTeams:2, drawResult:null,
-    entrants:[], bracket:null, savedId:null
+    entrants:[], bracket:null, savedId:null, viewOnly:false
   };
 }
 let state = safeGet('olympiad_autosave') || defaultState();
 
 function persistCurrent(){ safeSet('olympiad_autosave', state); }
-function persistSavedList(){ safeSet('olympiad_saved', savedList); }
+function persistSavedListCache(){ safeSet('olympiad_saved_cache', savedList); }
 
 function snapshot(){
   historyStack.push(JSON.parse(JSON.stringify(state)));
@@ -220,6 +296,7 @@ function goBack(){
 function goHome(){
   snapshot();
   state = defaultState();
+  state.screen = isAdmin ? 'adminHome' : 'landing';
   render();
 }
 
@@ -275,6 +352,7 @@ function generateBracket(names){
 }
 
 function setWinner(r,i,name){
+  if(!isAdmin) return;
   snapshot();
   const item = state.bracket[r][i];
   item.winner = name; item.played = true;
@@ -352,40 +430,76 @@ function startFromList(key){
 
 /* ---------------- save / load multiple tournaments ---------------- */
 function saveCurrent(){
+  if(!isAdmin) return;
   const existing = savedList.find(s=>s.id===state.savedId);
   const defaultName = existing ? existing.name : (state.game+' - '+new Date().toLocaleDateString('ar-EG'));
   const name = prompt('اسم البطولة؟', defaultName);
   if(name===null) return;
   if(!state.savedId) state.savedId = 'g'+Date.now();
-  const entry = {id:state.savedId, name: name.trim()||defaultName, game:state.game, savedAt:Date.now(), data:JSON.parse(JSON.stringify(state))};
-  const idx = savedList.findIndex(s=>s.id===state.savedId);
-  if(idx>=0) savedList[idx]=entry; else savedList.push(entry);
-  persistSavedList();
-  render();
-  alert('✅ اتحفظت اللعبة، هتلاقيها في الصفحة الرئيسية');
+  const cleanState = JSON.parse(JSON.stringify(state));
+  cleanState.viewOnly = false;
+  const entry = {id:state.savedId, name: name.trim()||defaultName, game:state.game, savedAt:Date.now(), data:cleanState};
+  if(db){
+    db.ref('savedGames/'+state.savedId).set(entry).then(()=>{
+      alert('✅ اتحفظت اللعبة، وهتظهر لأي حد بيفتح اللينك');
+    }).catch(()=>{
+      const idx = savedList.findIndex(s=>s.id===state.savedId);
+      if(idx>=0) savedList[idx]=entry; else savedList.push(entry);
+      persistSavedListCache(); render();
+      alert('⚠️ اتحفظت على جهازك بس — حصلت مشكلة في الاتصال بالسحابة');
+    });
+  } else {
+    const idx = savedList.findIndex(s=>s.id===state.savedId);
+    if(idx>=0) savedList[idx]=entry; else savedList.push(entry);
+    persistSavedListCache(); render();
+    alert('✅ اتحفظت اللعبة على جهازك (مفيش اتصال حاليًا بقاعدة البيانات المشتركة)');
+  }
 }
 function loadSaved(id){
+  if(!isAdmin) return;
   const entry = savedList.find(s=>s.id===id);
   if(!entry) return;
   snapshot();
   state = JSON.parse(JSON.stringify(entry.data));
+  state.viewOnly = false;
+  state.screen = 'bracket';
+  render();
+}
+function loadSavedView(id){
+  const entry = savedList.find(s=>s.id===id);
+  if(!entry) return;
+  snapshot();
+  state = JSON.parse(JSON.stringify(entry.data));
+  state.viewOnly = true;
+  state.screen = 'bracket';
   render();
 }
 function deleteSaved(id){
+  if(!isAdmin) return;
   if(!confirm('تحذف البطولة دي من المحفوظات؟')) return;
-  savedList = savedList.filter(s=>s.id!==id);
-  persistSavedList();
-  render();
+  if(db){
+    db.ref('savedGames/'+id).remove();
+  } else {
+    savedList = savedList.filter(s=>s.id!==id);
+    persistSavedListCache();
+    render();
+  }
 }
 
 /* ---------------- render ---------------- */
 function render(){
+  if(!isAdmin){
+    if(ADMIN_SCREENS.includes(state.screen)) state.screen='landing';
+    if(state.screen==='bracket' && !state.viewOnly) state.screen='landing';
+  }
   persistCurrent();
-  document.getElementById('homeBtn').style.display = state.screen==='home' ? 'none':'inline-block';
+  document.getElementById('homeBtn').style.display = state.screen==='landing' ? 'none':'inline-block';
   document.getElementById('backBtn').style.display = historyStack.length>0 ? 'inline-block':'none';
+  document.getElementById('logoutBtn').style.display = isAdmin ? 'inline-block':'none';
   const app=document.getElementById('app');
   app.innerHTML='';
-  if(state.screen==='home') return renderHome(app);
+  if(state.screen==='landing') return renderLanding(app);
+  if(state.screen==='adminHome') return renderAdminHome(app);
   if(state.screen==='subtype') return renderSubtype(app);
   if(state.screen==='individualSetup') return renderList(app,{
     key:'players', title:'مين هيلعب؟', sub:'دخّل أسماء اللاعبين', placeholder:'اسم اللاعب',
@@ -401,7 +515,39 @@ function render(){
   if(state.screen==='bracket') return renderBracket(app);
 }
 
-function renderHome(app){
+function renderLanding(app){
+  let listHtml = '';
+  const sorted=[...savedList].sort((a,b)=>b.savedAt-a.savedAt);
+  if(sorted.length){
+    listHtml = `
+      <div class="saved-section">
+        <div class="saved-title">📊 البطولات الحالية</div>
+        ${sorted.map(s=>`
+          <div class="saved-item">
+            <div class="info">
+              <div class="nm">${s.name}</div>
+              <div class="meta">${s.game||''}</div>
+            </div>
+            <button class="btn-continue" onclick="loadSavedView('${s.id}')">عرض النتايج ▶</button>
+          </div>`).join('')}
+      </div>`;
+  } else {
+    listHtml = `<div class="empty-note">لسه مفيش بطولات دلوقتي، تابعنا قريب 👀</div>`;
+  }
+  app.innerHTML = `
+    <div class="hero">
+      <div class="eyebrow">يلا بينا</div>
+      <h1>أهلاً بيك في الأولمبياد 🏆</h1>
+      <p>تابع نتايج البطولات أول بأول</p>
+    </div>
+    ${listHtml}
+    <div class="landing-admin">
+      <button class="admin-btn" onclick="adminLogin()">🔑 دخول المنظم</button>
+    </div>
+  `;
+}
+
+function renderAdminHome(app){
   const games=[
     {id:'شطرنج',ic:'♟️'}, {id:'كونكت فور',ic:'🔴'}, {id:'كورة',ic:'⚽'},
     {id:'بلايستيشن',ic:'🎮'}, {id:'اخرى',ic:'🎲'}
@@ -411,7 +557,7 @@ function renderHome(app){
     const sorted=[...savedList].sort((a,b)=>b.savedAt-a.savedAt);
     savedHtml = `
       <div class="saved-section">
-        <div class="saved-title">🗂️ بطولات محفوظة</div>
+        <div class="saved-title">🗂️ بطولاتك المحفوظة</div>
         ${sorted.map(s=>`
           <div class="saved-item">
             <div class="info">
@@ -419,13 +565,13 @@ function renderHome(app){
               <div class="meta">${s.game||''}</div>
             </div>
             <button class="btn-del" onclick="deleteSaved('${s.id}')">حذف</button>
-            <button class="btn-continue" onclick="loadSaved('${s.id}')">متابعة ▶</button>
+            <button class="btn-continue" onclick="loadSaved('${s.id}')">تابع التنظيم ▶</button>
           </div>`).join('')}
       </div>`;
   }
   app.innerHTML = `
     <div class="hero">
-      <div class="eyebrow">اختر اللعبة وابدأ البطولة</div>
+      <div class="eyebrow">وضع المنظم 🔑</div>
       <h1>الأولمبياد</h1>
       <p>اختار اللعبة، ضيف اللاعبين، ودوس ابدأ الاولمبياد</p>
     </div>
@@ -557,71 +703,26 @@ function renderTeamDrawResult(app){
   app.querySelector('#redrawBtn').addEventListener('click', doQuickDraw);
 }
 
-/* ---------------- connector lines between rounds ---------------- */
+/* ---------------- next-round preview info ---------------- */
 let lastBracketRounds = null;
 
-function drawConnectors(rounds){
-  const container = document.getElementById('bracketInner');
-  if(!container) return;
-  const old = document.getElementById('connectorSvg');
-  if(old) old.remove();
-  const w = container.scrollWidth, h = container.scrollHeight;
-  if(!w || !h) return;
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns,'svg');
-  svg.setAttribute('id','connectorSvg');
-  svg.setAttribute('width', w);
-  svg.setAttribute('height', h);
-  svg.style.position='absolute';
-  svg.style.top='0';
-  svg.style.left='0';
-  svg.style.pointerEvents='none';
-  svg.style.zIndex='0';
-  container.insertBefore(svg, container.firstChild);
-
-  rounds.forEach((round,r)=>{
-    if(r===0) return; // round 1 opponents come from the draw, no incoming line
-    round.forEach((item,j)=>{
-      const targetEl = document.getElementById(`item-${r}-${j}`);
-      if(!targetEl) return;
-      const sourceCoords = [];
-      if(item.kind==='match'){
-        [item.p1,item.p2].forEach(tok=>{ if(tok && typeof tok==='object' && tok.ref) sourceCoords.push(tok.ref); });
-      } else if(item.kind==='bye'){
-        const tok = item.token;
-        if(tok && typeof tok==='object' && tok.ref) sourceCoords.push(tok.ref);
-      }
-      sourceCoords.forEach(src=>{
-        const srcEl = document.getElementById(`item-${src.r}-${src.i}`);
-        if(srcEl) drawElbow(svg, srcEl, targetEl);
-      });
-    });
-  });
-}
-
-function drawElbow(svg, srcEl, targetEl){
-  const sx = srcEl.offsetLeft, sy = srcEl.offsetTop, sw = srcEl.offsetWidth, sh = srcEl.offsetHeight;
-  const tx = targetEl.offsetLeft, ty = targetEl.offsetTop, tw = targetEl.offsetWidth, th = targetEl.offsetHeight;
-  let x1, x2;
-  if(sx < tx){ x1 = sx+sw; x2 = tx; } else { x1 = sx; x2 = tx+tw; }
-  const y1 = sy + sh/2;
-  const y2 = ty + th/2;
-  const midX = (x1+x2)/2;
-  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-  path.setAttribute('d', `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`);
-  path.setAttribute('fill','none');
-  path.setAttribute('stroke','#3A4C7A');
-  path.setAttribute('stroke-width','2');
-  svg.appendChild(path);
-}
-
-window.addEventListener('resize', ()=>{
-  if(state.screen==='bracket' && lastBracketRounds) drawConnectors(lastBracketRounds);
-});
-if(document.fonts && document.fonts.ready){
-  document.fonts.ready.then(()=>{
-    if(state.screen==='bracket' && lastBracketRounds) drawConnectors(lastBracketRounds);
-  });
+function nextRoundInfo(rounds, r, i){
+  if(r+1 >= rounds.length) return null;
+  const nextRound = rounds[r+1];
+  for(let j=0;j<nextRound.length;j++){
+    const item = nextRound[j];
+    let matched = false, otherRef = null;
+    if(item.kind==='match'){
+      if(item.p1 && typeof item.p1==='object' && item.p1.ref && item.p1.ref.r===r && item.p1.ref.i===i){ matched=true; otherRef=item.p2; }
+      else if(item.p2 && typeof item.p2==='object' && item.p2.ref && item.p2.ref.r===r && item.p2.ref.i===i){ matched=true; otherRef=item.p1; }
+    } else if(item.kind==='bye'){
+      if(item.token && typeof item.token==='object' && item.token.ref && item.token.ref.r===r && item.token.ref.i===i){ matched=true; }
+    }
+    if(matched){
+      return { roundIndex:r+1, isBye:item.kind==='bye', opponentVal: otherRef ? resolveToken(otherRef) : null };
+    }
+  }
+  return null;
 }
 
 function roundLabel(r,total){
@@ -632,9 +733,23 @@ function roundLabel(r,total){
   return 'الدور '+(r+1);
 }
 
+function nextInfoHtml(rounds,total,r,i){
+  const info = nextRoundInfo(rounds,r,i);
+  if(!info) return '';
+  const label = roundLabel(info.roundIndex,total).replace(' 🏆','');
+  if(info.isBye){
+    return `<div class="next-info">→ الفايز هياخد راحة في ${label}</div>`;
+  }
+  if(info.opponentVal){
+    return `<div class="next-info">→ الفايز هيلعب مع <b>${info.opponentVal}</b> في ${label}</div>`;
+  }
+  return `<div class="next-info">→ الفايز هيتأهل لـ ${label}</div>`;
+}
+
 function renderBracket(app){
   const rounds = state.bracket;
   const total = rounds.length;
+  const readOnly = !!state.viewOnly;
   const lastRoundFinalMatch = rounds[total-1].find(it=>it.kind==='match');
   const champion = lastRoundFinalMatch && lastRoundFinalMatch.played ? lastRoundFinalMatch.winner : null;
 
@@ -658,6 +773,7 @@ function renderBracket(app){
           <div class="bye-card" id="${cardId}">
             <div class="lbl">مستريح هذا الدور</div>
             <div class="val">${val || '— في الانتظار —'}</div>
+            ${nextInfoHtml(rounds,total,r,i)}
           </div>`;
         return;
       }
@@ -671,16 +787,17 @@ function renderBracket(app){
         } else if(item.played){
           const cls = item.winner===v ? 'winner':'loser';
           slotsHtml += `<div class="slot ${cls}">${v}</div>`;
-        } else if(bothFilled){
+        } else if(bothFilled && !readOnly){
           slotsHtml += `<div class="slot clickable" onclick="setWinner(${r},${i},'${v.replace(/'/g,"\\'")}')">${v}</div>`;
         } else {
           slotsHtml += `<div class="slot">${v}</div>`;
         }
       });
       itemsHtml += `
-        <div class="match ${bothFilled && !item.played ? 'playable':''}" id="${cardId}">
+        <div class="match ${bothFilled && !item.played && !readOnly ? 'playable':''}" id="${cardId}">
           ${slotsHtml}
-          ${bothFilled && !item.played ? '<div class="play-hint">دوس على اسم الفايز</div>' : ''}
+          ${bothFilled && !item.played && !readOnly ? '<div class="play-hint">دوس على اسم الفايز</div>' : ''}
+          ${nextInfoHtml(rounds,total,r,i)}
         </div>`;
     });
     cols += `
@@ -690,19 +807,31 @@ function renderBracket(app){
       </div>`;
   });
 
+  const headActions = readOnly
+    ? ''
+    : `<button class="save-btn" onclick="saveCurrent()">💾 حفظ اللعبة</button>`;
+  const bottomBtn = readOnly
+    ? `<button class="ghost-btn" style="max-width:260px" onclick="goHome()">⬅ كل البطولات</button>`
+    : `<button class="ghost-btn" style="max-width:260px" onclick="goHome()">↺ بطولة جديدة</button>`;
+  const note = readOnly
+    ? `<div class="view-note">👀 وضع المتابعة فقط — النتايج بتتحدث من غير ما تقدر تعدلها</div>`
+    : '';
+
   app.innerHTML = `
     <div class="bracket-head">
       <div class="title">🏟️ ${state.game}</div>
-      <button class="save-btn" onclick="saveCurrent()">💾 حفظ اللعبة</button>
+      ${headActions}
     </div>
+    ${note}
     ${champHtml}
     <div class="bracket-scroll"><div class="bracket" id="bracketInner">${cols}</div></div>
-    <div class="reset-wrap"><button class="ghost-btn" style="max-width:260px" onclick="goHome()">↺ بطولة جديدة</button></div>
+    <div class="reset-wrap">${bottomBtn}</div>
   `;
 
   lastBracketRounds = rounds;
 }
 
+attachSavedListener();
 render();
 </script>
 </body>
