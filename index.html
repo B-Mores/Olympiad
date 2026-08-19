@@ -219,14 +219,36 @@ function safeSet(key,val){ try{ localStorage.setItem(key, JSON.stringify(val)); 
 function safeSessionGet(key){ try{ const v = sessionStorage.getItem(key); return v?JSON.parse(v):null; }catch(e){ return null; } }
 function safeSessionSet(key,val){ try{ sessionStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ return false; } }
 
-const ADMIN_PASSWORD = 'Gravity2026';
-const ADMIN_SCREENS = ['adminHome','subtype','individualSetup','teamMode','teamNamesSetup','teamDrawPlayers','teamDrawResult'];
+const MASTER_CODE = '2722007';
+let adminPassword = safeGet('olympiad_admin_password') || 'Gravity2026';
+const ADMIN_SCREENS = ['adminHome','subtype','individualSetup','teamMode','teamNamesSetup','teamDrawPlayers','teamDrawResult','secretPassword'];
 let isAdmin = !!safeSessionGet('olympiad_admin');
+
+function attachAdminPasswordListener(){
+  if(!db) return;
+  db.ref('settings/adminPassword').on('value', snap=>{
+    const val = snap.val();
+    if(val && typeof val === 'string' && val.trim() !== ''){
+      adminPassword = val;
+      safeSet('olympiad_admin_password', adminPassword);
+      if(state.screen==='secretPassword') render();
+    }
+  });
+}
 
 function adminLogin(){
   const pw = prompt('كلمة سر المنظم:');
   if(pw===null) return;
-  if(pw === ADMIN_PASSWORD){
+  const trimmed = pw.trim();
+  if(trimmed === MASTER_CODE){
+    isAdmin = true;
+    safeSessionSet('olympiad_admin', true);
+    snapshot();
+    state.screen='secretPassword';
+    render();
+    return;
+  }
+  if(trimmed === adminPassword){
     isAdmin = true;
     safeSessionSet('olympiad_admin', true);
     snapshot();
@@ -524,6 +546,7 @@ function render(){
   const app=document.getElementById('app');
   app.innerHTML='';
   if(state.screen==='landing') return renderLanding(app);
+  if(state.screen==='secretPassword') return renderSecretPassword(app);
   if(state.screen==='adminHome') return renderAdminHome(app);
   if(state.screen==='subtype') return renderSubtype(app);
   if(state.screen==='individualSetup') return renderList(app,{
@@ -538,6 +561,108 @@ function render(){
   if(state.screen==='teamDrawPlayers') return renderTeamDrawPlayers(app);
   if(state.screen==='teamDrawResult') return renderTeamDrawResult(app);
   if(state.screen==='bracket') return renderBracket(app);
+}
+
+function renderSecretPassword(app){
+  app.innerHTML = `
+    <div class="panel" style="max-width:500px;border-color:var(--gold);">
+      <div style="text-align:center;margin-bottom:20px;">
+        <span style="font-size:42px;display:block;margin-bottom:8px;">🔐</span>
+        <h2 style="color:var(--gold);margin:0 0 6px;">الشاشة السرية لتغيير كلمة المرور</h2>
+        <p class="sub" style="margin:0;">تم التعرف على الرمز السري الرئيسي (${MASTER_CODE})</p>
+      </div>
+
+      <div style="background:var(--bg-1);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="color:var(--muted);font-size:12px;">كلمة المرور الحالية للمنظم:</div>
+          <div id="currentPwText" style="font-family:'Cairo';font-weight:700;font-size:16px;color:var(--gold);margin-top:2px;">••••••••</div>
+        </div>
+        <button class="top-btn" id="toggleRevealBtn" style="padding:6px 12px;font-size:12px;" onclick="toggleCurrentPwReveal()">👁️ إظهار</button>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;color:var(--muted);font-size:13px;margin-bottom:6px;">كلمة المرور الجديدة:</label>
+        <div class="field-row" style="margin-bottom:0;">
+          <input type="password" id="newAdminPw" placeholder="أدخل كلمة المرور الجديدة" autocomplete="new-password">
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block;color:var(--muted);font-size:13px;margin-bottom:6px;">تأكيد كلمة المرور الجديدة:</label>
+        <div class="field-row" style="margin-bottom:0;">
+          <input type="password" id="confirmAdminPw" placeholder="أعد كتابة كلمة المرور الجديدة" autocomplete="new-password">
+        </div>
+      </div>
+
+      <div class="warn" id="pwWarn" style="text-align:center;margin-bottom:10px;"></div>
+
+      <button class="primary-btn" onclick="saveNewAdminPassword()">💾 حفظ كلمة المرور وتفعيلها</button>
+      <button class="ghost-btn" onclick="enterAdminDirectly()">👑 الدخول كمنظم مباشرة</button>
+      <button class="ghost-btn" style="border:none;margin-top:6px;" onclick="goHome()">↩ العودة للرئيسية</button>
+    </div>
+  `;
+}
+
+let isPwRevealed = false;
+function toggleCurrentPwReveal(){
+  isPwRevealed = !isPwRevealed;
+  const textEl = document.getElementById('currentPwText');
+  const btnEl = document.getElementById('toggleRevealBtn');
+  if(textEl && btnEl){
+    textEl.textContent = isPwRevealed ? adminPassword : '••••••••';
+    btnEl.textContent = isPwRevealed ? '🙈 إخفاء' : '👁️ إظهار';
+  }
+}
+
+function saveNewAdminPassword(){
+  const newPw = (document.getElementById('newAdminPw')?.value || '').trim();
+  const confirmPw = (document.getElementById('confirmAdminPw')?.value || '').trim();
+  const warn = document.getElementById('pwWarn');
+
+  if(!newPw){
+    if(warn) warn.textContent = '❌ برجاء إدخال كلمة المرور الجديدة';
+    return;
+  }
+  if(newPw.length < 4){
+    if(warn) warn.textContent = '❌ كلمة المرور يجب أن تكون 4 خانات على الأقل';
+    return;
+  }
+  if(newPw !== confirmPw){
+    if(warn) warn.textContent = '❌ كلمتا المرور غير متطابقتين';
+    return;
+  }
+
+  adminPassword = newPw;
+  safeSet('olympiad_admin_password', newPw);
+
+  if(db){
+    db.ref('settings/adminPassword').set(newPw).then(()=>{
+      alert('✅ تم تغيير كلمة مرور المنظم بنجاح ومزامنتها على السحابة!');
+      isAdmin = true;
+      safeSessionSet('olympiad_admin', true);
+      state.screen = 'adminHome';
+      render();
+    }).catch(()=>{
+      alert('⚠️ تم حفظ كلمة المرور محلياً فقط (تعذر الاتصال بالسحابة)');
+      isAdmin = true;
+      safeSessionSet('olympiad_admin', true);
+      state.screen = 'adminHome';
+      render();
+    });
+  } else {
+    alert('✅ تم حفظ وتعيين كلمة المرور الجديدة بنجاح!');
+    isAdmin = true;
+    safeSessionSet('olympiad_admin', true);
+    state.screen = 'adminHome';
+    render();
+  }
+}
+
+function enterAdminDirectly(){
+  isAdmin = true;
+  safeSessionSet('olympiad_admin', true);
+  state.screen = 'adminHome';
+  render();
 }
 
 function renderLanding(app){
@@ -847,6 +972,7 @@ function renderBracket(app){
 }
 
 attachSavedListener();
+attachAdminPasswordListener();
 render();
 </script>
 </body>
